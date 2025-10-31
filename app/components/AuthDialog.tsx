@@ -1,43 +1,30 @@
 'use client';
 
 import { useState } from 'react';
-import { authenticate, logout } from '@/app/actions';
+import { useAuth } from '@/lib/hooks/use-auth';
 
-interface AuthDialogProps {
-  isAuthenticated: boolean;
-  onAuthChange: () => void;
-}
-
-export default function AuthDialog({ isAuthenticated, onAuthChange }: AuthDialogProps) {
+export default function AuthDialog() {
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [showDialog, setShowDialog] = useState(false);
+  const { isAuthenticated, login, logout, isLoading } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await authenticate(password);
+    const result = await login(password);
     if (result.success) {
       setPassword('');
-      setError('');
       setShowDialog(false);
-      onAuthChange();
-    } else {
-      setError('Invalid password');
     }
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    onAuthChange();
   };
 
   if (isAuthenticated) {
     return (
       <button
-        onClick={handleLogout}
-        className="fixed top-4 right-4 z-50 bg-red-500 text-white px-4 py-2 rounded shadow-lg hover:bg-red-600"
+        onClick={logout}
+        disabled={isLoading}
+        className="fixed top-4 right-4 z-50 bg-red-500 text-white px-4 py-2 rounded shadow-lg hover:bg-red-600 disabled:opacity-50"
       >
-        Logout
+        {isLoading ? 'Logging out...' : 'Logout'}
       </button>
     );
   }
@@ -61,25 +48,26 @@ export default function AuthDialog({ isAuthenticated, onAuthChange }: AuthDialog
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
-                className="w-full px-3 py-2 border border-gray-300 rounded mb-2"
+                className="w-full px-3 py-2 border border-gray-300 rounded mb-4"
                 autoFocus
+                disabled={isLoading}
               />
-              {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  disabled={isLoading}
+                  className="flex-1 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
                 >
-                  Login
+                  {isLoading ? 'Logging in...' : 'Login'}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setShowDialog(false);
-                    setError('');
                     setPassword('');
                   }}
-                  className="flex-1 bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+                  disabled={isLoading}
+                  className="flex-1 bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 disabled:opacity-50"
                 >
                   Cancel
                 </button>

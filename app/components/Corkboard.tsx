@@ -1,16 +1,13 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { useStore } from '@/lib/store';
+import { usePapers } from '@/lib/hooks/use-papers';
+import { useViewport } from '@/lib/hooks/use-viewport';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import { Paper as PaperType } from '@/types/paper';
 import Paper from './Paper';
 import AuthDialog from './AuthDialog';
-import {
-  getPapers,
-  addPaper,
-  updatePaper,
-  deletePaper,
-  checkAuth,
-} from '@/app/actions';
 
 interface CorkboardProps {
   initialPapers: PaperType[];
@@ -18,24 +15,28 @@ interface CorkboardProps {
 }
 
 export default function Corkboard({ initialPapers, initialAuth }: CorkboardProps) {
-  const [papers, setPapers] = useState<PaperType[]>(initialPapers);
-  const [isAuthenticated, setIsAuthenticated] = useState(initialAuth);
-  const [focusedPaperId, setFocusedPaperId] = useState<string | null>(null);
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
   const boardRef = useRef<HTMLDivElement>(null);
 
-  const refreshAuth = async () => {
-    const auth = await checkAuth();
-    setIsAuthenticated(auth);
-  };
+  // Store state
+  const papers = useStore((state) => state.papers);
+  const setPapers = useStore((state) => state.setPapers);
+  const focusedPaperId = useStore((state) => state.focusedPaperId);
+  const setFocusedPaperId = useStore((state) => state.setFocusedPaperId);
+  const isAuthenticated = useStore((state) => state.isAuthenticated);
+  const setIsAuthenticated = useStore((state) => state.setIsAuthenticated);
 
-  const refreshPapers = async () => {
-    const updatedPapers = await getPapers();
-    setPapers(updatedPapers);
-  };
+  // Hooks
+  const { addPaper: addPaperAction, updatePaper: updatePaperAction } = usePapers();
+  const { viewport, isPanning, setIsPanning, setPan, setZoom, handleWheel } = useViewport();
+
+  // Hydrate store on mount
+  useEffect(() => {
+    setPapers(initialPapers);
+    setIsAuthenticated(initialAuth);
+  }, [initialPapers, initialAuth, setPapers, setIsAuthenticated]);
+
+  // Pan state
+  const panStartRef = useRef({ x: 0, y: 0 });
 
   const handleBoardClick = async (e: React.MouseEvent) => {
     if (focusedPaperId) {
@@ -45,43 +46,25 @@ export default function Corkboard({ initialPapers, initialAuth }: CorkboardProps
 
     if (!isAuthenticated || isPanning) return;
 
-    // Calculate position relative to the board with zoom and pan
     const rect = boardRef.current?.getBoundingClientRect();
     if (!rect) return;
 
-    const x = (e.clientX - rect.left - panOffset.x) / zoom;
-    const y = (e.clientY - rect.top - panOffset.y) / zoom;
+    const x = (e.clientX - rect.left - viewport.x) / viewport.zoom;
+    const y = (e.clientY - rect.top - viewport.y) / viewport.zoom;
 
-    const result = await addPaper(x - 96, y - 96); // Center the paper (48px * 2 = 96)
-    if (result.success && result.paper) {
-      setPapers([...papers, result.paper]);
-    }
-  };
-
-  const handlePaperUpdate = async (id: string, text: string) => {
-    await updatePaper(id, { text });
-    await refreshPapers();
-  };
-
-  const handlePaperDelete = async (id: string) => {
-    await deletePaper(id);
-    setPapers(papers.filter((p) => p.id !== id));
-    setFocusedPaperId(null);
+    await addPaperAction(x - 96, y - 96);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.target === boardRef.current) {
       setIsPanning(true);
-      setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+      panStartRef.current = { x: e.clientX - viewport.x, y: e.clientY - viewport.y };
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isPanning) {
-      setPanOffset({
-        x: e.clientX - panStart.x,
-        y: e.clientY - panStart.y,
-      });
+      setPan(e.clientX - panStartRef.current.x, e.clientY - panStartRef.current.y);
     }
   };
 
@@ -89,16 +72,16 @@ export default function Corkboard({ initialPapers, initialAuth }: CorkboardProps
     setIsPanning(false);
   };
 
-  const handleWheel = (e: React.WheelEvent) => {
+  const handleWheelEvent = (e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY * -0.001;
-    const newZoom = Math.min(Math.max(0.5, zoom + delta), 2);
+    const newZoom = Math.min(Math.max(0.5, viewport.zoom + delta), 2);
     setZoom(newZoom);
   };
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#8B7355]">
-      <AuthDialog isAuthenticated={isAuthenticated} onAuthChange={refreshAuth} />
+      <AuthDialog />
 
       {/* Instructions */}
       <div className="fixed bottom-4 left-4 z-40 bg-white bg-opacity-90 p-4 rounded shadow-lg max-w-xs">
@@ -106,8 +89,9 @@ export default function Corkboard({ initialPapers, initialAuth }: CorkboardProps
         <ul className="text-sm space-y-1">
           <li>• {isAuthenticated ? 'Click anywhere to add paper' : 'Login to add papers'}</li>
           <li>• Click paper to focus/edit</li>
+          {isAuthenticated && <li>• Drag papers to reposition</li>}
           <li>• Click outside to unfocus</li>
-          <li>• Drag to pan, scroll to zoom</li>
+          <li>• Drag board to pan, scroll to zoom</li>
         </ul>
       </div>
 
@@ -120,17 +104,15 @@ export default function Corkboard({ initialPapers, initialAuth }: CorkboardProps
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
+        onWheel={handleWheelEvent}
         style={{
-          backgroundImage: `
-            radial-gradient(circle, #6B5A44 1px, transparent 1px)
-          `,
+          backgroundImage: `radial-gradient(circle, #6B5A44 1px, transparent 1px)`,
           backgroundSize: '30px 30px',
         }}
       >
         <div
           style={{
-            transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
+            transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
             transformOrigin: '0 0',
             width: '5000px',
             height: '5000px',
@@ -138,15 +120,7 @@ export default function Corkboard({ initialPapers, initialAuth }: CorkboardProps
           }}
         >
           {papers.map((paper) => (
-            <Paper
-              key={paper.id}
-              paper={paper}
-              isEditable={isAuthenticated}
-              isFocused={focusedPaperId === paper.id}
-              onFocus={() => setFocusedPaperId(paper.id)}
-              onUpdate={(text) => handlePaperUpdate(paper.id, text)}
-              onDelete={() => handlePaperDelete(paper.id)}
-            />
+            <Paper key={paper.id} paper={paper} zoom={viewport.zoom} />
           ))}
         </div>
       </div>

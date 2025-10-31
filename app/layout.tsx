@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Caveat } from "next/font/google";
 import "./globals.css";
+import Toaster from "./components/Toaster";
 
 const caveat = Caveat({
   variable: "--font-caveat",
@@ -22,6 +23,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${caveat.variable} antialiased`}>
         {children}
+        <Toaster />
       </body>
     </html>
   );
