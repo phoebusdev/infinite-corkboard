@@ -4,7 +4,7 @@
 
 ✅ **Deployed to Vercel**: https://infinite-corkboard.vercel.app
 ✅ **GitHub Repository**: https://github.com/phoebusdev/infinite-corkboard
-✅ **Environment Variable Set**: `ADMIN_PASSWORD` = `corkboard2024!`
+✅ **Environment Variable Set**: `ADMIN_PASSWORD` = `admin123`
 ✅ **Storage**: Vercel Blob (simpler than KV!)
 
 ## Quick Setup (30 seconds)
@@ -27,7 +27,7 @@ Once Blob is connected:
 
 1. Visit https://infinite-corkboard.vercel.app
 2. Click "Login to Edit" button (top right)
-3. Enter password: `corkboard2024!`
+3. Enter password: `admin123`
 4. Click anywhere on the board to add sticky notes
 5. Click notes to focus and write on them
 6. Refresh the page - your notes persist!
