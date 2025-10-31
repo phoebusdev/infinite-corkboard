@@ -56,7 +56,28 @@ export async function getAllPapers(): Promise<Paper[]> {
     }
 
     const rawPapers = await response.json();
-    return (rawPapers || []).map(migratePaper);
+    const migratedPapers = (rawPapers || []).map(migratePaper);
+
+    // Check if migration was needed (any paper was missing new fields)
+    const needsMigration = rawPapers.some((p: any) =>
+      p.version === undefined ||
+      p.color === undefined ||
+      p.zIndex === undefined
+    );
+
+    // If migration was needed, save migrated papers back to blob
+    if (needsMigration && migratedPapers.length > 0) {
+      console.log('Migrating papers to new schema...');
+      try {
+        await savePapers(migratedPapers, true); // Skip backup during migration
+        console.log(`Migrated ${migratedPapers.length} papers successfully`);
+      } catch (error) {
+        console.error('Error saving migrated papers:', error);
+        // Don't fail the read, just log the error
+      }
+    }
+
+    return migratedPapers;
   } catch (error) {
     console.error('Error reading papers from blob:', error);
     return [];
@@ -66,15 +87,20 @@ export async function getAllPapers(): Promise<Paper[]> {
 /**
  * Save papers with backup
  */
-export async function savePapers(papers: Paper[]): Promise<void> {
+export async function savePapers(
+  papers: Paper[],
+  skipBackup: boolean = false
+): Promise<void> {
   if (!isBlobConfigured()) {
     console.warn('Blob not configured, skipping save');
     return;
   }
 
   try {
-    // Create backup before saving
-    await createBackup(papers);
+    // Create backup before saving (unless skipped for migration)
+    if (!skipBackup) {
+      await createBackup(papers);
+    }
 
     const blob = new Blob([JSON.stringify(papers, null, 2)], {
       type: 'application/json',

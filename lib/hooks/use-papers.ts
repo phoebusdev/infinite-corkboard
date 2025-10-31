@@ -5,15 +5,22 @@ import {
   addPaper as addPaperAction,
   updatePaper as updatePaperAction,
   deletePaper as deletePaperAction,
+  getPapers,
 } from '@/app/actions';
 import { Paper, PaperColor } from '@/types/paper';
 
 export function usePapers() {
   const papers = useStore((state) => state.papers);
+  const setPapers = useStore((state) => state.setPapers);
   const addPaper = useStore((state) => state.addPaper);
   const updatePaper = useStore((state) => state.updatePaper);
   const deletePaper = useStore((state) => state.deletePaper);
-  const optimisticUpdate = useStore((state) => state.optimisticUpdate);
+  const papersById = useStore((state) => state.papersById);
+
+  const refreshPapers = useCallback(async () => {
+    const updated = await getPapers();
+    setPapers(updated);
+  }, [setPapers]);
 
   const handleAddPaper = useCallback(
     async (x: number, y: number, color?: PaperColor) => {
@@ -33,24 +40,31 @@ export function usePapers() {
 
   const handleUpdatePaper = useCallback(
     async (id: string, updates: Partial<Paper>, version: number) => {
+      // Get current paper for optimistic update
+      const currentPaper = papersById.get(id);
+      if (!currentPaper) {
+        toast.error('Paper not found');
+        return { success: false };
+      }
+
       // Optimistic update
-      const rollback = optimisticUpdate(id, updates);
+      updatePaper(id, updates);
 
       const result = await updatePaperAction(id, updates, version);
 
       if (result.success && result.paper) {
+        // Update with server version (includes new version number)
         updatePaper(id, result.paper);
       } else {
-        // Rollback on error
-        rollback();
+        // Rollback to current paper
+        updatePaper(id, currentPaper);
 
         if (result.conflict) {
-          toast.error('Paper was modified by another process', {
-            action: {
-              label: 'Reload',
-              onClick: () => window.location.reload(),
-            },
+          toast.error('Paper was modified elsewhere. Reloading...', {
+            duration: 2000,
           });
+          // Refresh all papers to get latest
+          setTimeout(() => refreshPapers(), 1000);
         } else {
           toast.error(result.error || 'Failed to update paper');
         }
@@ -58,13 +72,13 @@ export function usePapers() {
 
       return result;
     },
-    [updatePaper, optimisticUpdate]
+    [updatePaper, papersById, refreshPapers]
   );
 
   const handleDeletePaper = useCallback(
     async (id: string) => {
       // Optimistic delete
-      const paperToDelete = papers.find((p) => p.id === id);
+      const paperToDelete = papersById.get(id);
       if (!paperToDelete) return;
 
       deletePaper(id);
@@ -81,7 +95,7 @@ export function usePapers() {
 
       return result;
     },
-    [papers, deletePaper, addPaper]
+    [papersById, deletePaper, addPaper]
   );
 
   return {
@@ -89,5 +103,6 @@ export function usePapers() {
     addPaper: handleAddPaper,
     updatePaper: handleUpdatePaper,
     deletePaper: handleDeletePaper,
+    refreshPapers,
   };
 }
