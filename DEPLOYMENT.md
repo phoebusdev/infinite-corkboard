@@ -5,34 +5,32 @@
 ✅ **Deployed to Vercel**: https://infinite-corkboard.vercel.app
 ✅ **GitHub Repository**: https://github.com/phoebusdev/infinite-corkboard
 ✅ **Environment Variable Set**: `ADMIN_PASSWORD` = `corkboard2024!`
+✅ **Storage**: Vercel Blob (simpler than KV!)
 
-## Next Steps to Complete Setup
+## Quick Setup (30 seconds)
 
-### 1. Add Vercel KV Storage
-
-The application needs Vercel KV (Redis) to store papers. Follow these steps:
+### Add Vercel Blob Storage
 
 1. Go to https://vercel.com/phoebusdevs-projects/infinite-corkboard
 2. Click on the "Storage" tab
-3. Click "Create Database"
-4. Select "KV (Redis)"
-5. Name it: `infinite-corkboard-kv`
-6. Click "Create"
-7. Vercel will automatically add the following environment variables:
-   - `KV_REST_API_URL`
-   - `KV_REST_API_TOKEN`
-8. Redeploy the project (or wait for automatic redeployment)
+3. Click "Create" or "Connect Store"
+4. Select "Blob"
+5. Click "Continue" and "Connect"
+6. Vercel automatically adds `BLOB_READ_WRITE_TOKEN`
+7. Done! Your notes will now persist.
 
-### 2. Test the Application
+That's it! Blob is much simpler than KV - just one click to set up.
 
-Once KV is connected:
+## Test the Application
+
+Once Blob is connected:
 
 1. Visit https://infinite-corkboard.vercel.app
 2. Click "Login to Edit" button (top right)
 3. Enter password: `corkboard2024!`
 4. Click anywhere on the board to add sticky notes
 5. Click notes to focus and write on them
-6. Click outside to unfocus
+6. Refresh the page - your notes persist!
 
 ## How to Use
 
@@ -47,7 +45,7 @@ Once KV is connected:
 - Click anywhere to add new sticky notes
 - Click notes to edit text
 - Click the delete button on focused notes to remove them
-- All changes save automatically
+- All changes save automatically to Blob storage
 
 ## Changing the Admin Password
 
@@ -72,13 +70,22 @@ echo "ADMIN_PASSWORD=your-local-password" > .env.local
 npm run dev
 ```
 
+Note: Local development works without Blob (notes just won't persist).
+
 ## Architecture
 
 - **Frontend**: Next.js 14 (App Router) with React 18
 - **Styling**: Tailwind CSS with custom corkboard theme
-- **Database**: Vercel KV (Redis)
+- **Storage**: Vercel Blob (stores papers.json file)
 - **Auth**: Simple cookie-based password authentication
 - **Deployment**: Vercel with automatic GitHub deployments
+
+## Why Blob Instead of KV?
+
+- **Simpler**: Just stores a JSON file, no database complexity
+- **Easier Setup**: One-click connection in Vercel
+- **Perfect for this use case**: Storing a list of papers doesn't need a database
+- **Cost-effective**: Blob is very economical for small data
 
 ## Production URLs
 

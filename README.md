@@ -43,7 +43,7 @@ A never-ending digital corkboard where you can pin and write notes.
 
 1. Push to GitHub
 2. Import project in Vercel
-3. Add Vercel KV storage in Vercel dashboard
+3. Add Vercel Blob storage in Vercel dashboard
 4. Set `ADMIN_PASSWORD` environment variable in Vercel
 5. Deploy
 
@@ -52,11 +52,10 @@ A never-ending digital corkboard where you can pin and write notes.
 - **Next.js 14** (App Router)
 - **TypeScript**
 - **Tailwind CSS**
-- **Vercel KV** (Redis)
+- **Vercel Blob** (Object Storage)
 - **Server Actions**
 
 ## Environment Variables
 
 - `ADMIN_PASSWORD`: Password for edit mode (required)
-- `KV_REST_API_URL`: Vercel KV URL (auto-set by Vercel)
-- `KV_REST_API_TOKEN`: Vercel KV token (auto-set by Vercel)
+- `BLOB_READ_WRITE_TOKEN`: Vercel Blob token (auto-set by Vercel)

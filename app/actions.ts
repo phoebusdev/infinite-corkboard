@@ -2,7 +2,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { revalidatePath } from 'next/cache';
-import { getAllPapers, savePapers } from '@/lib/kv';
+import { getAllPapers, savePapers } from '@/lib/storage';
 import { isAuthenticated, authenticate as authUser, logout as logoutUser } from '@/lib/auth';
 import { Paper } from '@/types/paper';
 
